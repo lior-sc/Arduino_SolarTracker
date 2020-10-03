@@ -1,20 +1,26 @@
+////////////////////////////////// libraries //////////////////////////////////
 #include <Arduino.h>
 #include "Servo.h"
 #include <Wire.h>
 #include "LiquidCrystal_I2C.h"
 
-#define DEBUG                   true
+////////////////////////////////// debug variables //////////////////////////////////
+#define DEBUG                   false
+#define DEBUG_dt                25
 
-#define yawPin                  9
-#define pitchPin                10
+unsigned long int debugTimer = 0;
 
+////////////////////////////////// pin definitions //////////////////////////////////
+#define yawServoPin             9
+#define pitchServoPin           10
 #define LDR_topRight            A0
 #define LDR_topLeft             A1
 #define LDR_bottomRight         A2
 #define LDR_bottomLeft          A3
-#define V_Pin                   A6
-#define I_pin                   A7
+#define VoltageReading_Pin      A6
+#define currentReading_Pin      A7
 
+////////////////////////////////// servo variables //////////////////////////////////
 #define controlLoopFreq         10                         //hertz
 #define controlLoop_dt          1000 / controlLoopFreq     //milliseconds
 #define invertedYawLoop         false
@@ -22,27 +28,26 @@
 #define maxServoMicroseconds    1900
 #define minServoMicroseconds    1100
 
-
-#define lcdFreq             1                         //hertz
-#define lcd_dt              1000 / lcdFreq            //milliseconds
-
-#define DEBUG_dt            250
-
-#define Volt2Amp            0.4
-
+unsigned long int ControlLoopTimer = 0;
+int yaw_Position = 1500;
+int pitch_Position = 1750;
+double deadZone = 0;
 
 Servo yawServo;
 Servo pitchServo;
 
+////////////////////////////////// LCD variables //////////////////////////////////
+#define lcdFreq                 1                         //hertz
+#define lcd_dt                  1000 / lcdFreq            //milliseconds
+
+unsigned long int lcdTimer = 0;
+
 LiquidCrystal_I2C lcd(0x27,20,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
-unsigned long int ControlLoopTimer = 0;
-unsigned long int lcdTimer = 0;
-unsigned long int debugTimer=0;
-int yaw_Position = 1500;
-int pitch_Position = 1500;
-double deadZone = 0;
+////////////////////////////////// current sensor variables //////////////////////////////////
+#define ACS723_Volt2Amp         0.4
 
+////////////////////////////////// function declarations //////////////////////////////////
 void yaw_Controller();
 void pitch_Controller();
 void controlLoop();
@@ -50,6 +55,7 @@ void power_Display();
 void lcd_Setup();
 double saturation_deadZone(double val, double dval, double topValue, double bottomValue, double deadZone);
 
+////////////////////////////////// main loop //////////////////////////////////
 void setup() 
 {
   if(DEBUG)
@@ -57,11 +63,11 @@ void setup()
     Serial.begin(115200);
   }
 
-  yawServo.attach(yawPin);
+  yawServo.attach(yawServoPin);
   yawServo.writeMicroseconds(1500);
 
-  pitchServo.attach(pitchPin);
-  pitchServo.writeMicroseconds(1500);
+  pitchServo.attach(pitchServoPin);
+  pitchServo.writeMicroseconds(1750);
 
   lcd_Setup();
 }
@@ -87,6 +93,7 @@ void loop()
   }
 }
 
+////////////////////////////////// function definitions //////////////////////////////////
 void lcd_Setup()
 {
   lcd.init();
@@ -96,19 +103,20 @@ void lcd_Setup()
 }
 void power_Display()
 {
-  double I = ((((double)analogRead(I_pin)) * 5 / 1023)-2.5)*1/0.4;
-  double V = ((double)analogRead(V_Pin)) * 5 / 1023;
+  double I = ((((double)analogRead(currentReading_Pin)) * 5 / 1023) - 2.5) * (1 / ACS723_Volt2Amp);
+  double V = ((double)analogRead(VoltageReading_Pin)) * 5 / 1023;
   double P = V * I;
 
   lcd.setCursor(0,0);
   lcd.print("V: ");
   lcd.print(V,2);
-  lcd.print(" I: ");
+  lcd.print("  I: ");
   lcd.print(I,2);
   lcd.setCursor(0,1);
   lcd.print("P: ");
   lcd.print(P,2);
-  lcd.print(" [Watt]");
+  lcd.setCursor(9,1);
+  lcd.print("[Watt] ");
 }
 void controlLoop()
 { 
@@ -134,7 +142,7 @@ void yaw_Controller()
 }
 void pitch_Controller()
 {
-  double Kp = 700;
+  double Kp = 500;
   double r = 0;
   double y = (double)(analogRead(LDR_topRight)+analogRead(LDR_topLeft)-analogRead(LDR_bottomRight)-analogRead(LDR_bottomLeft));
 
@@ -162,4 +170,3 @@ double saturation_deadZone(double val, double dval, double topValue, double bott
   }
   else return dval;
 }
-
