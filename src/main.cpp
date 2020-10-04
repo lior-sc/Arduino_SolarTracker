@@ -42,7 +42,7 @@ Servo pitchServo;
 
 unsigned long int lcdTimer = 0;
 
-LiquidCrystal_I2C lcd(0x27,20,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
 ////////////////////////////////// current sensor variables //////////////////////////////////
 #define ACS723_Volt2Amp         0.4
